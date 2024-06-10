@@ -5,6 +5,18 @@ $username = 'db_user';
 $password = 'db_pass';
 $dbname = $_GET["dbname"];
 
+// Your API key (store this securely and do not hard-code in production)
+$valid_api_key = 'YOUR_API_KEY';
+
+// Check for the API key in the request headers
+$headers = getallheaders();
+if (!isset($headers['X-API-KEY']) || $headers['X-API-KEY'] !== $valid_api_key) {
+    // If the API key is missing or invalid, send a 403 Forbidden response
+    header("HTTP/1.1 403 Forbidden");
+    echo "Access denied.";
+    exit;
+}
+
 // Set the filename for the backup file
 $backup_file = $dbname . '_' . date('Ymd_His') . '.sql';
 
