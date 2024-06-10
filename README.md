@@ -45,5 +45,6 @@ python main.py
 - google-auth
 - google-api-python-client
 - tqdm
+- configparser
 
 Ensure the script can access the required URL and the "DBs" folder is writable. The script will automatically create the "DBs" folder if it does not exist.
