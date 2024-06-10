@@ -1,4 +1,4 @@
-# DB_Master_Storage
+# DB_Storage_Manager
 It is a Python application built with PyQt5. It allows users to securely download databases from a PHP API using an API key and upload them to Google Drive. The application provides a user-friendly interface with progress bars and logging functionality. It utilizes Google Drive API and OAuth 2.0 for secure authentication and file upload. This project demonstrates an integration of PyQt5 with web APIs and cloud services for database management.
 
 The GUI version allows a one-time download, and the non-GUI version allows an automatic download every X days you specify.
