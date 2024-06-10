@@ -2,6 +2,10 @@ import os
 import requests
 import time
 from datetime import datetime
+from tqdm import tqdm
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 # Directory to store the downloaded databases
 db_folder = "dbs"
@@ -9,36 +13,77 @@ db_folder = "dbs"
 # Ensure the backup directory exists
 os.makedirs(db_folder, exist_ok=True)
 
-# Function to download the database
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+SERVICE_ACCOUNT_FILE = 'credentials.json'
+API_KEY = 'YOUR_API_KEY'  # Add your API key here
+
+# Authenticate Google Drive API
+credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+# Function to download the database with a progress bar
 def download_db(dbname):
-    # URL of the PHP script that generates the database dump
     db_url = f"your/path/to/db_master_storage.php?dbname={dbname}"
+    headers = {'X-API-KEY': API_KEY}
 
     try:
-        response = requests.get(db_url)
+        response = requests.get(db_url, headers=headers, stream=True)
         response.raise_for_status()
 
-        # Check for a 404 error
         if response.status_code == 404:
             print("Error: 404 Not Found - Failed to create the backup file.")
-            return
+            return None
 
-        # Extract the filename from the Content-Disposition header
         content_disposition = response.headers.get('Content-Disposition')
         if not content_disposition:
             print("Error: Content-Disposition header is missing.")
-            return
+            return None
         
         filename = content_disposition.split('filename=')[1].strip('"')
-        
-        # Save the downloaded database file
         db_filename = os.path.join(db_folder, filename)
-        with open(db_filename, "wb") as db_file:
-            db_file.write(response.content)
+
+        total_size = int(response.headers.get('content-length', 0))
+        with open(db_filename, "wb") as db_file, tqdm(
+            desc=db_filename,
+            total=total_size,
+            unit='B',
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as bar:
+            for data in response.iter_content(chunk_size=1024):
+                db_file.write(data)
+                bar.update(len(data))
         
         print(f"Database downloaded and saved as {db_filename}")
+        upload_to_drive(db_filename, filename)
+        return db_filename
     except requests.exceptions.RequestException as e:
         print(f"Error downloading the database: {e}")
+        return None
+
+# Function to upload the file to Google Drive with a progress bar
+def upload_to_drive(file_path, file_name):
+    print(f"Connecting to Google")
+    creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    service = build('drive', 'v3', credentials=creds)
+
+    folder_id = 'YOUR_FOLDER_ID'
+    file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
+    media = MediaFileUpload(file_path, chunksize=1024*1024, resumable=True)
+
+    try:
+        request = service.files().create(body=file_metadata, media_body=media, fields='id')
+        response = None
+        print(f"Uploading to Drive")
+
+        with tqdm(total=os.path.getsize(file_path), unit='B', unit_scale=True, unit_divisor=1024, desc=f'Uploading {file_name}') as progress_bar:
+            while response is None:
+                status, response = request.next_chunk()
+                if status:
+                    progress_bar.update(min(status.resumable_progress - progress_bar.n, os.path.getsize(file_path)))
+        print(f"Upload completed")
+    except Exception as e:
+        print(f"Error during upload: {e}\n")
 
 def countdown(t):
     while t:
@@ -49,26 +94,35 @@ def countdown(t):
         t -= 1
 
 def main(interval):
-
     while True:
-        # Get the current time
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f"Running the scheduled task at {current_time}...")
-        print(f"===========Title of your DB===========")
-        print(f"Getting access to the DB")
-        download_db("DBNAME_HERE")         # Download the database
-        print(f"======================")
+        
+        # List to store file paths for deletion
+        files_to_delete = []
+        
+        # Read databases from CONFIG file
+        with open("databases.txt", "r") as config_file:
+            databases = [line.strip() for line in config_file if line.strip()]
+        
+        # Download and upload databases
+        for db in databases:
+            db_path = download_db(db)
+            if db_path:
+                files_to_delete.append(db_path)
+        
+        # Delete downloaded databases
+        for file_path in files_to_delete:
+            if file_path:
+                os.remove(file_path)
+                print(f"{os.path.basename(file_path)} deleted from local folder.")
+        
         print(f"Task was completed. Bot will proceed to wait 3 days from now. \n")
-        # Show countdown timer
         countdown(interval)
 
-# Initial download app
 if __name__ == "__main__":
-
     print(f"Real-Time Bot: Scheduled Download DBs")
     print(f"The bot will check all databases every 3 days.\n")
 
-    # Set the interval to 3 days (in seconds)
     interval = 3 * 24 * 60 * 60  # 3 days in seconds
-
-    main(interval) # Run MainApp
+    main(interval)
