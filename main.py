@@ -1,3 +1,4 @@
+import configparser
 import os
 import requests
 import time
@@ -7,15 +8,29 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# Directory to store the downloaded databases
-db_folder = "dbs"
+# Function to read configuration from a file
+def read_config(file_path):
+    config = {}
+    parser = configparser.ConfigParser()
+    parser.read(file_path)
+    for section in parser.sections():
+        for key, value in parser.items(section):
+            config[key] = value
+    return config
+
+# Load configuration
+config = read_config('config.ini')
 
 # Ensure the backup directory exists
+db_folder = config.get("db_folder")
 os.makedirs(db_folder, exist_ok=True)
+
+# API path
+url_path = config.get("url_path")
 
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 SERVICE_ACCOUNT_FILE = 'credentials.json'
-API_KEY = 'YOUR_API_KEY'  # Add your API key here
+API_KEY = config.get("api_key")  # Add your API key here
 
 # Authenticate Google Drive API
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
@@ -23,7 +38,7 @@ drive_service = build('drive', 'v3', credentials=credentials)
 
 # Function to download the database with a progress bar
 def download_db(dbname):
-    db_url = f"your/path/to/db_master_storage.php?dbname={dbname}"
+    db_url = f"{url_path}db_master_storage.php?dbname={dbname}"
     headers = {'X-API-KEY': API_KEY}
 
     try:
@@ -67,7 +82,7 @@ def upload_to_drive(file_path, file_name):
     creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     service = build('drive', 'v3', credentials=creds)
 
-    folder_id = 'YOUR_FOLDER_ID'
+    folder_id = config.get("folder_id")
     file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
     media = MediaFileUpload(file_path, chunksize=1024*1024, resumable=True)
 
@@ -124,5 +139,4 @@ if __name__ == "__main__":
     print(f"Real-Time Bot: Scheduled Download DBs")
     print(f"The bot will check all databases every 3 days.\n")
 
-    interval = 3 * 24 * 60 * 60  # 3 days in seconds
-    main(interval)
+    main(config.get("timer"))
