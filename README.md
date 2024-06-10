@@ -26,7 +26,7 @@ git clone https://github.com/CryptoJoma/db-storage-manager.git
 pip install -r requirements.txt
 ```
 3. Place your Google Drive service account credentials in a file named credentials.json in the project directory.
-4. Add your PHP API key to the API_KEY variable in main.py.
+4. Add your API informatoin to the variable in config.ini
 
 # Usage
 1. Run the script:
