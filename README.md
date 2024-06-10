@@ -1,18 +1,20 @@
 # DB_Master_Storage
-It is a Python application built with PyQt5. It allows users to securely download databases from a PHP API using an API key and upload them to Google Drive. The application provides a user-friendly interface with progress bars and logging functionality. It utilizes Google Drive API and OAuth 2.0 for secure authentication and file upload. This project demonstrates an integration of PyQt5 with web APIs and cloud services for database management. The GUI version allows a one-time download, and the non-GUI version allows an automatic download every X days you specify.
+It is a Python application built with PyQt5. It allows users to securely download databases from a PHP API using an API key and upload them to Google Drive. The application provides a user-friendly interface with progress bars and logging functionality. It utilizes Google Drive API and OAuth 2.0 for secure authentication and file upload. This project demonstrates an integration of PyQt5 with web APIs and cloud services for database management.
+
+The GUI version allows a one-time download, and the non-GUI version allows an automatic download every X days you specify.
 
 # Features
-Database Download: Allows users to download databases from a PHP API securely.
-Google Drive Upload: Enables users to upload downloaded databases to Google Drive for safe storage.
-User-friendly Interface: Provides a graphical user interface (GUI) built with PyQt5, making it easy for users to interact with the application.
-Progress Tracking: Displays progress bars for both download and upload processes, allowing users to track the progress of each task.
-Logging: Logs the status of each task, providing users with detailed information about the download and upload operations.
-Secure Authentication: Utilizes API keys and OAuth 2.0 for secure authentication when accessing the PHP API and Google Drive API, ensuring data security.
-Error Handling: Handles errors gracefully and provides informative messages to users in case of download or upload failures.
-Customization: Allows users to customize the behavior of the application by configuring API keys, credentials, and other parameters in the source code.
-Simple Configuration: Easily specify the database names to download.
-Countdown Timer: Displays a countdown until the next scheduled download. (For non-GUI version)
-Automated Downloads: Downloads database backups every X days. (For non-GUI version)
+- Database Download: Allows users to download databases from a PHP API securely.
+- Google Drive Upload: Enables users to upload downloaded databases to Google Drive for safe storage.
+- User-friendly Interface: Provides a graphical user interface (GUI) built with PyQt5, making it easy for users to interact with the application.
+- Progress Tracking: Displays progress bars for both download and upload processes, allowing users to track the progress of each task.
+- Logging: Logs the status of each task, providing users with detailed information about the download and upload operations.
+- Secure Authentication: Utilizes API keys and OAuth 2.0 for secure authentication when accessing the PHP API and Google Drive API, ensuring data security.
+- Error Handling: Handles errors gracefully and provides informative messages to users in case of download or upload failures.
+- Customization: Allows users to customize the behavior of the application by configuring API keys, credentials, and other parameters in the source code.
+- Simple Configuration: Easily specify the database names to download.
+- Countdown Timer: Displays a countdown until the next scheduled download. (For non-GUI version)
+- Automated Downloads: Downloads database backups every X days. (For non-GUI version)
 
 # Installation
 1. Clone the repository to your local machine:
