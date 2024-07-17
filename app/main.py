@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPushButton, QLabel, QHBoxLayout, QFrame
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPushButton, QLabel, QHBoxLayout, QFrame, QProgressBar
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 from datetime import datetime
 import logging
@@ -10,7 +10,6 @@ import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from tqdm import tqdm
 
 # Function to read configuration from a file
 def read_config(file_path):
@@ -47,6 +46,7 @@ class WorkerThread(QThread):
     update_log = pyqtSignal(str)
     update_timer = pyqtSignal(str)
     enable_button = pyqtSignal()
+    update_progress = pyqtSignal(int)
 
     def __init__(self, interval_minutes):
         super().__init__()
@@ -81,16 +81,10 @@ class WorkerThread(QThread):
             db_filename = os.path.join(db_folder, filename)
 
             total_size = int(response.headers.get('content-length', 0))
-            with open(db_filename, "wb") as db_file, tqdm(
-                desc=db_filename,
-                total=total_size,
-                unit='B',
-                unit_scale=True,
-                unit_divisor=1024,
-            ) as bar:
+            with open(db_filename, "wb") as db_file:
                 for data in response.iter_content(chunk_size=1024):
                     db_file.write(data)
-                    bar.update(len(data))
+                    self.update_progress.emit(int(db_file.tell() / total_size * 100))
             
             self.update_log.emit(f"<span style=\"color: green;\">Success:</span> Database downloaded and saved as {db_filename}<br>")
             self.upload_to_drive(db_filename, filename)
@@ -114,11 +108,11 @@ class WorkerThread(QThread):
             response = None
             self.update_log.emit(f"Uploading to Drive")
 
-            with tqdm(total=os.path.getsize(file_path), unit='B', unit_scale=True, unit_divisor=1024, desc=f'Uploading {file_name}') as progress_bar:
-                while response is None:
-                    status, response = request.next_chunk()
-                    if status:
-                        progress_bar.update(min(status.resumable_progress - progress_bar.n, os.path.getsize(file_path)))
+            total_size = os.path.getsize(file_path)
+            while response is None:
+                status, response = request.next_chunk()
+                if status:
+                    self.update_progress.emit(int(status.resumable_progress / total_size * 100))
             self.update_log.emit(f"<span style=\"color: green;\">Success:</span> Upload completed<br>")
         except Exception as e:
             self.update_log.emit(f"<span style=\"color: red;\">Error during upload:</span> {e}<br>")
@@ -192,6 +186,15 @@ class MainWindow(QMainWindow):
         self.top_layout.addWidget(self.timer_label)
         self.layout.addWidget(self.top_frame)
 
+        # Progress bar
+        self.progress_bar_frame = QFrame()
+        self.progress_bar_frame.setFrameShape(QFrame.StyledPanel)
+        self.progress_bar_frame.setFrameShadow(QFrame.Raised)
+        self.progress_bar_layout = QHBoxLayout(self.progress_bar_frame)
+        self.progress_bar = QProgressBar()
+        self.progress_bar_layout.addWidget(self.progress_bar)
+        self.layout.addWidget(self.progress_bar_frame)
+
         # Log output text box
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
@@ -210,6 +213,7 @@ class MainWindow(QMainWindow):
         self.worker_thread = WorkerThread(timer) # TIMER: Minutes
         self.worker_thread.update_log.connect(self.update_log)
         self.worker_thread.update_timer.connect(self.update_timer)
+        self.worker_thread.update_progress.connect(self.update_progress)
         self.worker_thread.enable_button.connect(self.enable_button)
 
     def start_tasks(self):
@@ -221,6 +225,9 @@ class MainWindow(QMainWindow):
     
     def update_timer(self, timer_message):
         self.timer_label.setText(timer_message)
+    
+    def update_progress(self, progress):
+        self.progress_bar.setValue(progress)
 
     def enable_button(self):
         self.run_button.setEnabled(True)

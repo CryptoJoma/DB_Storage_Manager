@@ -53,3 +53,17 @@ QTabWidget::pane {
     border-radius: 5px;
     padding: 10px;
 }
+
+QProgressBar {
+    color: #000000;               /* Text color (not highlighted)
+    border: 2px solid white;      /* Border color */
+    border-radius: 5px;           /* Rounded border edges */
+    margin-left: 24px;
+    margin-right: 24px;           
+    text-align: center            /* Center the X% indicator */
+}
+
+QProgressBar::chunk {
+    color: #204a87;               /* Highlighted text color!? Not working */
+    background-color: #FFFFFF;    /* Color of the 'completed' bar */
+}
