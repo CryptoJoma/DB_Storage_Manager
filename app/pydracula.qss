@@ -1,0 +1,55 @@
+/* pydracula.qss */
+* {
+    background-color: #282a36;
+    color: #f8f8f2;
+    border: none;
+    padding: 5px;
+}
+
+QPushButton {
+    background-color: #44475a;
+    border-radius: 5px;
+    padding: 10px;
+    color: #f8f8f2;
+}
+
+QPushButton:hover {
+    background-color: #6272a4;
+    color: #50fa7b;  /* Change the text color to a light green */
+}
+
+QTextEdit {
+    background-color: #44475a;
+    border-radius: 5px;
+    padding: 10px;
+    color: #f8f8f2;
+}
+
+QLabel {
+    color: #f8f8f2;
+    font-size: 14px;
+}
+
+QFrame {
+    background-color: #282a36;
+    border: 1px solid #44475a;
+    border-radius: 5px;
+}
+
+QTabBar::tab {
+    background: #44475a;
+    color: #f8f8f2;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+QTabBar::tab:selected {
+    background: #6272a4;
+    color: #50fa7b;
+}
+
+QTabWidget::pane {
+    border: 1px solid #44475a;
+    border-radius: 5px;
+    padding: 10px;
+}
