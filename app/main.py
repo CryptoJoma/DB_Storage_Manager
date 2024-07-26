@@ -29,9 +29,6 @@ os.makedirs(db_folder, exist_ok=True)
 # Set timer
 timer = int(config["CONFIG"]["TIMER"])
 
-# API path
-url_path = config["CONFIG"]["URL_PATH"]
-
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 SERVICE_ACCOUNT_FILE = 'credentials.json'
 API_KEY = config["CONFIG"]["API_KEY"]  # Add your API key here
