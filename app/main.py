@@ -1,6 +1,7 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPushButton, QLabel, QHBoxLayout, QFrame, QProgressBar
-from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPushButton, QLabel, QHBoxLayout, QFrame, QProgressBar, QToolButton
+from PyQt5.QtCore import QThread, pyqtSignal, Qt, QSize
+from PyQt5.QtGui import QIcon
 from datetime import datetime
 import logging
 import time
@@ -13,34 +14,145 @@ from googleapiclient.http import MediaFileUpload
 
 # Function to read configuration from a file
 def read_config(file_path):
-    config = {}
-    parser = configparser.ConfigParser()
-    parser.read(file_path)
-    for section in parser.sections():
-        for key, value in parser.items(section):
-            config[key] = value
+    config = configparser.ConfigParser()
+    config.read(file_path)
     return config
 
 # Load configuration
 config = read_config('config.ini')
+theme = config["CONFIG"]["THEME"]
 
 # Ensure the backup directory exists
-db_folder = config.get("db_folder")
+db_folder = config["CONFIG"]["DB_FOLDER"]
 os.makedirs(db_folder, exist_ok=True)
 
 # Set timer
-timer = int(config.get("timer"))
+timer = int(config["CONFIG"]["TIMER"])
 
 # API path
-url_path = config.get("url_path")
+url_path = config["CONFIG"]["URL_PATH"]
 
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 SERVICE_ACCOUNT_FILE = 'credentials.json'
-API_KEY = config.get("api_key")  # Add your API key here
+API_KEY = config["CONFIG"]["API_KEY"]  # Add your API key here
 
 # Authenticate Google Drive API
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 drive_service = build('drive', 'v3', credentials=credentials)
+
+class CustomTitleBar(QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.initial_pos = None
+
+        # App Title Bar
+        title_bar_layout = QHBoxLayout(self)
+        title_bar_layout.setContentsMargins(1, 1, 1, 1)
+        title_bar_layout.setSpacing(2)
+        
+        # App icon
+        self.icon_label = QLabel()
+        self.icon_label.setPixmap(QIcon('icon.png').pixmap(32, 32))  # Load the icon
+        self.icon_label.setFixedSize(32, 32)
+        self.icon_label.setStyleSheet(
+            """
+        QLabel { border: none; }
+        """
+        )
+        title_bar_layout.addWidget(self.icon_label)
+
+        # Title Section
+        self.title = QLabel(f"{self.__class__.__name__}", self)
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title.setStyleSheet(
+            """
+        QLabel { text-transform: uppercase; font-size: 10pt; margin-left: 48px; border: none; }
+        """
+        )
+
+        if title := parent.windowTitle():
+            self.title.setText(title)
+        title_bar_layout.addWidget(self.title)
+        
+        # Buttons Bar
+        # Min button
+        self.minimize_button = QToolButton(self)
+        minimize_icon = QIcon()
+        minimize_icon.addFile(f"themes/{theme}/images/min.svg")
+        self.minimize_button.setIcon(minimize_icon)
+        self.minimize_button.clicked.connect(self.minimize_window)
+
+        # Normal button
+        self.normal_button = QToolButton(self)
+        normal_icon = QIcon()
+        normal_icon.addFile(f"themes/{theme}/images/normal.svg")
+        self.normal_button.setIcon(normal_icon)
+        self.normal_button.clicked.connect(self.maximize_window)
+        self.normal_button.setVisible(False)
+
+        # Max button
+        self.maximize_button = QToolButton(self)
+        maximize_icon = QIcon()
+        maximize_icon.addFile(f"themes/{theme}/images/max.svg")
+        self.maximize_button.setIcon(maximize_icon)
+        self.maximize_button.clicked.connect(self.maximize_window)
+
+        # Close button
+        self.close_button = QToolButton(self)
+        close_icon = QIcon()
+        close_icon.addFile(f"themes/{theme}/images/close.svg")
+        self.close_button.setIcon(close_icon)
+        self.close_button.clicked.connect(self.close_window)
+
+        # Add buttons
+        buttons = [
+            self.minimize_button,
+            self.normal_button,
+            self.maximize_button,
+            self.close_button,
+        ]
+        for button in buttons:
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setFixedSize(QSize(16, 16))
+            button.setStyleSheet(
+                """QToolButton {
+                    border: none;
+                    padding: 2px;
+                }
+                """
+            )
+            title_bar_layout.addWidget(button)
+
+    def minimize_window(self):
+        self.window().showMinimized()
+
+    def maximize_window(self):
+        if self.window().isMaximized():
+            self.window().showNormal()
+            self.normal_button.setVisible(True)
+            self.maximize_button.setVisible(False)
+        else:
+            self.window().showMaximized()
+            self.normal_button.setVisible(False)
+            self.maximize_button.setVisible(True)
+
+    def close_window(self):
+        self.window().close()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.initial_pos = event.globalPos() - self.window().frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and self.initial_pos is not None:
+            self.window().move(event.globalPos() - self.initial_pos)
+            event.accept()
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.maximize_window()
+            event.accept()
 
 class WorkerThread(QThread):
     update_log = pyqtSignal(str)
@@ -61,11 +173,10 @@ class WorkerThread(QThread):
 
     # Function to download the database with a progress bar
     def download_db(self, dbname):
-        db_url = f"{url_path}db_master_storage.php?dbname={dbname}"
         headers = {'X-API-KEY': API_KEY}
 
         try:
-            response = requests.get(db_url, headers=headers, stream=True)
+            response = requests.get(dbname, headers=headers, stream=True)
             response.raise_for_status()
 
             if response.status_code == 404:
@@ -99,7 +210,7 @@ class WorkerThread(QThread):
         creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
         service = build('drive', 'v3', credentials=creds)
 
-        folder_id = config.get("folder_id")
+        folder_id = config["CONFIG"]["FOLDER_ID"]
         file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
         media = MediaFileUpload(file_path, chunksize=1024*1024, resumable=True)
 
@@ -141,7 +252,8 @@ class WorkerThread(QThread):
                 
                 # Download and upload databases
                 for db in databases:
-                    self.update_log.emit(f"<span style=\"color: yellow;\">===========</span> {db} <span style=\"color: yellow;\">===========</span>")
+                    db_name = db.split("?dbname=")[1]
+                    self.update_log.emit(f"<span style=\"color: yellow;\">===========</span> {db_name} <span style=\"color: yellow;\">===========</span>")
                     self.update_log.emit(f"\nConnecting to DB...")
                     db_path = self.download_db(db)
                     if db_path:
@@ -168,9 +280,14 @@ class SignalHandler(logging.Handler):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowTitle("DB - Storage Manager")
         self.setGeometry(100, 100, 800, 600)
-        self.setStyleSheet(open("pydracula.qss", "r").read())  # Load the PyDracula stylesheet
+        self.setStyleSheet(open(f"themes/{theme}/style.qss", "r").read())  # Load the PyDracula stylesheet  
+        self.setWindowIcon(QIcon('icon.png'))  
+
+        self.custom_title_bar = CustomTitleBar(self)
+        self.setMenuWidget(self.custom_title_bar)  
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
