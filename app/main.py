@@ -188,11 +188,17 @@ class WorkerThread(QThread):
             filename = content_disposition.split('filename=')[1].strip('"')
             db_filename = os.path.join(db_folder, filename)
 
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(response.headers.get('Content-Length', 0))
+            if total_size == 0:
+                self.update_log.emit("<span style=\"color: yellow;\">Warning:</span> Content-Length is zero or missing; progress may not be accurate.<br>")
+            
+            downloaded_size = 0
             with open(db_filename, "wb") as db_file:
                 for data in response.iter_content(chunk_size=1024):
                     db_file.write(data)
-                    self.update_progress.emit(int(db_file.tell() / total_size * 100))
+                    downloaded_size += len(data)
+                    if total_size > 0:
+                        self.update_progress.emit(int(downloaded_size / total_size * 100))
             
             self.update_log.emit(f"<span style=\"color: green;\">Success:</span> Database downloaded and saved as {db_filename}<br>")
             self.upload_to_drive(db_filename, filename)
