@@ -189,16 +189,21 @@ class WorkerThread(QThread):
             db_filename = os.path.join(db_folder, filename)
 
             total_size = int(response.headers.get('Content-Length', 0))
-            if total_size == 0:
-                self.update_log.emit("<span style=\"color: yellow;\">Warning:</span> Content-Length is zero or missing; progress may not be accurate.<br>")
-            
             downloaded_size = 0
+
             with open(db_filename, "wb") as db_file:
                 for data in response.iter_content(chunk_size=1024):
                     db_file.write(data)
                     downloaded_size += len(data)
+                    
                     if total_size > 0:
-                        self.update_progress.emit(int(downloaded_size / total_size * 100))
+                        progress = int(downloaded_size / total_size * 100)
+                        self.update_progress.emit(progress)
+                    else:
+                        # If Content-Length is not provided, we cannot calculate the exact progress.
+                        # You may update progress based on arbitrary checkpoints or omit progress updates.
+                        # Here we're assuming 100% when we have received some data, but this might need adjustments.
+                        self.update_progress.emit(100)
             
             self.update_log.emit(f"<span style=\"color: green;\">Success:</span> Database downloaded and saved as {db_filename}<br>")
             self.upload_to_drive(db_filename, filename)
@@ -223,10 +228,18 @@ class WorkerThread(QThread):
             self.update_log.emit(f"Uploading to Drive")
 
             total_size = os.path.getsize(file_path)
+            uploaded_size = 0
+
             while response is None:
                 status, response = request.next_chunk()
                 if status:
-                    self.update_progress.emit(int(status.resumable_progress / total_size * 100))
+                    # Update progress bar based on the uploaded size
+                    uploaded_size = status.resumable_progress
+                    progress = int(uploaded_size / total_size * 100)
+                    self.update_progress.emit(progress)
+
+            # Ensure progress reaches 100%
+            self.update_progress.emit(100)
             self.update_log.emit(f"<span style=\"color: green;\">Success:</span> Upload completed<br>")
         except Exception as e:
             self.update_log.emit(f"<span style=\"color: red;\">Error during upload:</span> {e}<br>")
