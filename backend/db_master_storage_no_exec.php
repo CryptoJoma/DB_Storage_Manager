@@ -1,8 +1,8 @@
 <?php
 // Database configuration
 $host = 'localhost';
-$username = 'DB_USER';
-$password = 'DB_PASS';
+$username = 'db_user';
+$password = 'db_pass';
 $dbname = $_GET["dbname"];
 
 // Your API key (store this securely and do not hard-code in production)
